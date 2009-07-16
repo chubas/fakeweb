@@ -30,7 +30,7 @@ class TestYieldingMatches < Test::Unit::TestCase
   def test_not_interferes_with_normal_response_bodies
     FakeWeb.register_uri(:get, %r|http://example.com/test_example/(\d+)|, :body => Proc.new{|a| a })
     FakeWeb.register_uri(:get, "http://example.com/test_example/string_body", :body => "String")
-    FakeWeb.register_uri(:get, "http://example.com/test_example/regexp_body", :body => "Regexp")
+    FakeWeb.register_uri(:get, %r|http://example.com/test_example/regexp_body|, :body => "Regexp")
     assert_equal '42', Net::HTTP.start('example.com') { |query| query.get('/test_example/42') }.body
     assert_equal 'String', Net::HTTP.start('example.com') { |query| query.get('/test_example/string_body') }.body
     assert_equal 'Regexp', Net::HTTP.start('example.com') { |query| query.get('/test_example/regexp_body') }.body
