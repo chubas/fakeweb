@@ -66,9 +66,16 @@ module FakeWeb
       uri = normalize_uri(uri.to_s).to_s
       uri = Utility.strip_default_port_from_uri(uri)
 
-      matches = uri_map.select { |registered_uri, method_hash|
-        registered_uri.is_a?(Regexp) && uri.match(registered_uri) && method_hash.has_key?(method)
-      }
+      matches = uri_map.select do |registered_uri, method_hash|
+        if registered_uri.is_a?(Regexp)
+          match = uri.match(registered_uri)
+          if match and method_hash.has_key?(method)
+            responder = method_hash[method]
+            responder.each{|r| r.match = match }
+            true
+          end
+        end
+      end
 
       if matches.size > 1
         raise MultipleMatchingRegexpsError,

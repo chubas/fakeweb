@@ -1,18 +1,21 @@
 module FakeWeb
   class Responder #:nodoc:
 
-    attr_accessor :method, :uri, :options, :times
+    attr_accessor :method, :uri, :options, :times, :match
     KNOWN_OPTIONS = [:body, :exception, :response, :status].freeze
 
     def initialize(method, uri, options, times)
       self.method = method
       self.uri = uri
       self.options = options
-      self.times = times ? times : 1
+      self.times = times || 1
 
       if options.has_key?(:file) || options.has_key?(:string)
         print_file_string_options_deprecation_warning
         options[:body] = options.delete(:file) || options.delete(:string)
+      end
+      if options[:body].is_a?(Proc) and not uri.is_a?(Regexp)
+        raise ArgumentError.new("Regexp required if passing Proc as response argument")
       end
     end
 
@@ -39,15 +42,16 @@ module FakeWeb
     private
 
     def headers_extracted_from_options
-      options.reject {|name, _| KNOWN_OPTIONS.include?(name) }.map { |name, value|
+      options.reject {|name, _| KNOWN_OPTIONS.include?(name) }.map do |name, value|
         [name.to_s.split("_").map { |segment| segment.capitalize }.join("-"), value]
-      }
+      end
     end
 
     def body
       return '' unless options.has_key?(:body)
-
-      if !options[:body].include?("\0") && File.exists?(options[:body]) && !File.directory?(options[:body])
+      if options[:body].is_a?(Proc)
+        options[:body].call(*@match.captures)
+      elsif !options[:body].include?("\0") && File.exists?(options[:body]) && !File.directory?(options[:body])
         File.read(options[:body])
       else
         options[:body]
@@ -62,9 +66,9 @@ module FakeWeb
         r = Net::HTTPResponse.read_new(socket)
 
         # Store the oiriginal transfer-encoding
-        saved_transfer_encoding = r.instance_eval {
+        saved_transfer_encoding = r.instance_eval do
           @header['transfer-encoding'] if @header.key?('transfer-encoding')
-        }
+        end
 
         # read the body of response.
         r.instance_eval { @header['transfer-encoding'] = nil }
