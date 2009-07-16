@@ -24,6 +24,7 @@ class TestYieldingMatches < Test::Unit::TestCase
     FakeWeb.register_uri(:get, %r|http://example\.com/([^/]*)/(?:[^/]*)/([^/]*)|, :body => proc)
     response = Net::HTTP.start('example.com') { |query| query.get('/foo/bar/baz') }
     assert_equal 'foo, baz', response.body
+    assert_equal ['foo', 'baz'], expected_args
   end
 
   def test_not_interferes_with_normal_response_bodies
